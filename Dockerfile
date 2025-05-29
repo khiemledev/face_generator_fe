@@ -25,6 +25,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Set basePath at build time
 ARG NEXTJS_BASE_PATH
 ENV NEXTJS_BASE_PATH=${NEXTJS_BASE_PATH:-}
+ENV NEXT_PUBLIC_BASE_PATH=${NEXTJS_BASE_PATH:-}
 
 # Build the application
 RUN npm run build
@@ -35,6 +36,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_BASE_PATH=${NEXTJS_BASE_PATH:-}
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

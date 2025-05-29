@@ -17,6 +17,7 @@ services:
     environment:
       - NODE_ENV=development
       - NEXTJS_BASE_PATH=${NEXTJS_BASE_PATH:-}
+      - NEXT_PUBLIC_BASE_PATH=${NEXTJS_BASE_PATH:-}
     stdin_open: true
     tty: true
 
@@ -33,4 +34,5 @@ services:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
       - NEXTJS_BASE_PATH=${NEXTJS_BASE_PATH:-}
+      - NEXT_PUBLIC_BASE_PATH=${NEXTJS_BASE_PATH:-}
     restart: unless-stopped

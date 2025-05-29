@@ -11,12 +11,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
 
 const defaultFaces = [
-  { id: 1, name: "Face 1", src: "/images/face1.png" },
-  { id: 2, name: "Face 2", src: "/images/face2.png" },
-  { id: 3, name: "Face 3", src: "/images/face3.png" },
-  { id: 4, name: "Face 4", src: "/images/face4.png" },
-  { id: 5, name: "Face 5", src: "/images/face5.png" },
-  { id: 6, name: "Face 6", src: "/images/face6.png" },
+  { id: 1, name: "Face 1", src: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/images/face1.png` },
+  { id: 2, name: "Face 2", src: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/images/face2.png` },
+  { id: 3, name: "Face 3", src: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/images/face3.png` },
+  { id: 4, name: "Face 4", src: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/images/face4.png` },
+  { id: 5, name: "Face 5", src: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/images/face5.png` },
+  { id: 6, name: "Face 6", src: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/images/face6.png` },
 ]
 
 const attributes = {
