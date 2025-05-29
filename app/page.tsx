@@ -13,10 +13,10 @@ import { Label } from "@/components/ui/label"
 const defaultFaces = [
   { id: 1, name: "Face 1", src: "/images/face1.png" },
   { id: 2, name: "Face 2", src: "/images/face2.png" },
-  { id: 3, name: "Face 3", src: "/placeholder.svg?height=200&width=200" },
-  { id: 4, name: "Face 4", src: "/placeholder.svg?height=200&width=200" },
-  { id: 5, name: "Face 5", src: "/placeholder.svg?height=200&width=200" },
-  { id: 6, name: "Face 6", src: "/placeholder.svg?height=200&width=200" },
+  { id: 3, name: "Face 3", src: "/images/face3.png" },
+  { id: 4, name: "Face 4", src: "/images/face4.png" },
+  { id: 5, name: "Face 5", src: "/images/face5.png" },
+  { id: 6, name: "Face 6", src: "/images/face6.png" },
 ]
 
 const attributes = {
@@ -129,22 +129,36 @@ export default function FaceGenerator() {
       }, {} as Record<string, number>)
 
       const formData = new FormData()
-      if (selectedFace) {
-        formData.append('face_form', selectedFace.toString())
-      }
       formData.append('attrs', JSON.stringify(apiAttributes))
 
-      const response = await fetch('https://aiclub.uit.edu.vn/face_generator_api/face_gen', {
-        method: 'POST',
-        body: formData,
-      })
+      let response: Response
+      if (uploadedImage) {
+        // Convert base64 to blob
+        const base64Response = await fetch(uploadedImage)
+        const blob = await base64Response.blob()
+        formData.append('binary_file', blob, 'uploaded_image.png')
+        
+        response = await fetch('https://aiclub.uit.edu.vn/face_generator_api/face_gen_upload', {
+          method: 'POST',
+          body: formData,
+        })
+      } else if (selectedFace) {
+        // Use default face endpoint
+        formData.append('face_form', selectedFace.toString())
+        response = await fetch('https://aiclub.uit.edu.vn/face_generator_api/face_gen', {
+          method: 'POST',
+          body: formData,
+        })
+      } else {
+        throw new Error('Please select a face or upload an image')
+      }
 
       if (!response.ok) {
         throw new Error('Failed to generate face')
       }
 
-      const blob = await response.blob()
-      const imageUrl = URL.createObjectURL(blob)
+      const resultBlob = await response.blob()
+      const imageUrl = URL.createObjectURL(resultBlob)
       setGeneratedImage(imageUrl)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -194,29 +208,53 @@ export default function FaceGenerator() {
                   </TabsList>
 
                   <TabsContent value="upload" className="space-y-4">
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                        id="file-upload"
-                      />
-                      <label htmlFor="file-upload" className="cursor-pointer">
-                        <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                        <p className="text-lg font-medium text-gray-900">Upload your image</p>
-                        <p className="text-sm text-gray-500">PNG, JPG up to 10MB</p>
-                      </label>
-                    </div>
-                    {uploadedImage && (
-                      <div className="flex justify-center">
-                        <div className="w-32 h-32 rounded-lg overflow-hidden">
+                    {uploadedImage ? (
+                      <div className="relative flex justify-center">
+                        <div className="w-48 h-48 rounded-lg overflow-hidden">
                           <img
-                            src={uploadedImage || "/placeholder.svg"}
+                            src={uploadedImage}
                             alt="Uploaded"
                             className="w-full h-full object-cover"
                           />
                         </div>
+                        <div className="absolute top-2 right-2 flex gap-2">
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-8 w-8 bg-white/90 hover:bg-white"
+                            onClick={() => {
+                              setUploadedImage(null)
+                              // Reset the file input
+                              const fileInput = document.getElementById('file-upload') as HTMLInputElement
+                              if (fileInput) fileInput.value = ''
+                            }}
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-8 w-8 bg-white/90 hover:bg-white"
+                            onClick={() => document.getElementById('file-upload')?.click()}
+                          >
+                            <Upload className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                          id="file-upload"
+                        />
+                        <label htmlFor="file-upload" className="cursor-pointer">
+                          <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                          <p className="text-lg font-medium text-gray-900">Upload your image</p>
+                          <p className="text-sm text-gray-500">PNG, JPG up to 10MB</p>
+                        </label>
                       </div>
                     )}
                   </TabsContent>
