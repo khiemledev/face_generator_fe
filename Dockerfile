@@ -22,6 +22,10 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Set basePath at build time
+ARG NEXTJS_BASE_PATH
+ENV NEXTJS_BASE_PATH=${NEXTJS_BASE_PATH:-}
+
 # Build the application
 RUN npm run build
 
@@ -52,4 +56,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"] 
+CMD ["npm", "run", "start"] 

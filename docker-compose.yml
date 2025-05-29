@@ -6,6 +6,8 @@ services:
     build:
       context: .
       target: deps
+      args:
+        - NEXTJS_BASE_PATH=${NEXTJS_BASE_PATH:-}
     command: npm run dev
     ports:
       - "3000:3000"
@@ -23,6 +25,8 @@ services:
     build:
       context: .
       target: runner
+      args:
+        - NEXTJS_BASE_PATH=${NEXTJS_BASE_PATH:-}
     ports:
       - "3000:3000"
     environment:
