@@ -14,8 +14,9 @@ export function LanguageSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" className="fixed top-4 right-4">
+        <Button variant="outline" className="fixed top-4 right-4 gap-2">
           <Globe className="h-[1.2rem] w-[1.2rem]" />
+          <span className="uppercase">{language}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
