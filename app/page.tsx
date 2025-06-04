@@ -9,6 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
+import { LanguageProvider } from "./contexts/LanguageContext"
+import { LanguageSelector } from "./components/LanguageSelector"
+import { useLanguage } from "./contexts/LanguageContext"
+import { getTranslation } from "./utils/translations"
 
 const defaultFaces = [
   { id: 1, name: "Face 1", src: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/images/face1.png` },
@@ -58,7 +62,10 @@ const attributes = {
   general: ["Attractive", "Bags_Under_Eyes", "Blurry", "Male", "Pale_Skin", "Rosy_Cheeks", "Young"],
 }
 
-export default function FaceGenerator() {
+function FaceGeneratorContent() {
+  const { language } = useLanguage()
+  const t = (key: string) => getTranslation(language, key)
+
   const [selectedFace, setSelectedFace] = useState<number | null>(null)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [attributeValues, setAttributeValues] = useState<Record<string, number>>(() => {
@@ -184,11 +191,12 @@ export default function FaceGenerator() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-violet-50 p-4">
+      <LanguageSelector />
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Face Generator</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">{t('title')}</h1>
           <p className="text-lg text-gray-600">
-            Upload a face or choose a default, then customize attributes to generate new faces
+            {t('subtitle')}
           </p>
         </div>
 
@@ -198,13 +206,13 @@ export default function FaceGenerator() {
             {/* Face Selection */}
             <Card>
               <CardHeader>
-                <CardTitle>Choose Your Base Face</CardTitle>
+                <CardTitle>{t('chooseFace')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="upload" className="w-full">
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="upload">Upload Image</TabsTrigger>
-                    <TabsTrigger value="default">Default Faces</TabsTrigger>
+                    <TabsTrigger value="upload">{t('uploadImage')}</TabsTrigger>
+                    <TabsTrigger value="default">{t('defaultFaces')}</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="upload" className="space-y-4">
@@ -252,8 +260,8 @@ export default function FaceGenerator() {
                         />
                         <label htmlFor="file-upload" className="cursor-pointer">
                           <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                          <p className="text-lg font-medium text-gray-900">Upload your image</p>
-                          <p className="text-sm text-gray-500">PNG, JPG up to 10MB</p>
+                          <p className="text-lg font-medium text-gray-900">{t('uploadPrompt')}</p>
+                          <p className="text-sm text-gray-500">{t('uploadHint')}</p>
                         </label>
                       </div>
                     )}
@@ -290,20 +298,20 @@ export default function FaceGenerator() {
             {/* Attribute Controls */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Customize Attributes</CardTitle>
+                <CardTitle>{t('customizeAttributes')}</CardTitle>
                 <Button variant="outline" size="sm" onClick={resetAttributes}>
                   <RotateCcw className="w-4 h-4 mr-2" />
-                  Reset All
+                  {t('resetAll')}
                 </Button>
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="hair" className="w-full">
                   <TabsList className="grid w-full grid-cols-5">
-                    <TabsTrigger value="hair">Hair</TabsTrigger>
-                    <TabsTrigger value="facial">Facial</TabsTrigger>
-                    <TabsTrigger value="facial_hair">Facial Hair</TabsTrigger>
-                    <TabsTrigger value="makeup_accessories">Makeup & Accessories</TabsTrigger>
-                    <TabsTrigger value="general">General</TabsTrigger>
+                    {Object.keys(attributes).map((category) => (
+                      <TabsTrigger key={category} value={category}>
+                        {t(`categories.${category}`)}
+                      </TabsTrigger>
+                    ))}
                   </TabsList>
 
                   {Object.entries(attributes).map(([category, attrs]) => (
@@ -313,7 +321,7 @@ export default function FaceGenerator() {
                           <div key={attr} className="space-y-2">
                             <div className="flex justify-between">
                               <Label htmlFor={attr} className="text-sm font-medium">
-                                {formatAttributeName(attr)}
+                                {t(`attributes.${attr}`)}
                               </Label>
                               <span className="text-sm text-gray-500">{attributeValues[attr]}</span>
                             </div>
@@ -340,7 +348,7 @@ export default function FaceGenerator() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Generated Result</CardTitle>
+                <CardTitle>{t('generatedResult')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
@@ -351,13 +359,13 @@ export default function FaceGenerator() {
                   ) : generatedImage ? (
                     <img
                       src={generatedImage}
-                      alt="Generated face"
+                      alt={t('generatedResult')}
                       className="w-full h-full object-cover rounded-lg"
                     />
                   ) : (
                     <div className="text-center text-gray-500">
                       <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4"></div>
-                      <p>Generated face will appear here</p>
+                      <p>{t('placeholderText')}</p>
                     </div>
                   )}
                 </div>
@@ -371,17 +379,17 @@ export default function FaceGenerator() {
                   {isGenerating ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Generating...
+                      {t('generating')}
                     </>
                   ) : (
-                    "Generate Face"
+                    t('generateFace')
                   )}
                 </Button>
 
                 {generatedImage && (
                   <Button variant="outline" className="w-full" onClick={handleDownload}>
                     <Download className="w-4 h-4 mr-2" />
-                    Download Result
+                    {t('downloadResult')}
                   </Button>
                 )}
               </CardContent>
@@ -390,7 +398,7 @@ export default function FaceGenerator() {
             {/* Current Settings Summary */}
             <Card>
               <CardHeader>
-                <CardTitle>Active Attributes</CardTitle>
+                <CardTitle>{t('activeAttributes')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -400,12 +408,12 @@ export default function FaceGenerator() {
                     .slice(0, 10)
                     .map(([attr, value]) => (
                       <div key={attr} className="flex justify-between text-sm">
-                        <span>{formatAttributeName(attr)}</span>
+                        <span>{t(`attributes.${attr}`)}</span>
                         <span className={value > 50 ? "text-primary" : "text-purple-600"}>{value}</span>
                       </div>
                     ))}
                   {Object.values(attributeValues).every((v) => v === 50) && (
-                    <p className="text-sm text-gray-500 text-center">All attributes at default (50)</p>
+                    <p className="text-sm text-gray-500 text-center">{t('defaultAttributes')}</p>
                   )}
                 </div>
               </CardContent>
@@ -414,5 +422,13 @@ export default function FaceGenerator() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function FaceGenerator() {
+  return (
+    <LanguageProvider>
+      <FaceGeneratorContent />
+    </LanguageProvider>
   )
 }
