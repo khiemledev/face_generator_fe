@@ -68,6 +68,10 @@ function FaceGeneratorContent() {
 
   const [selectedFace, setSelectedFace] = useState<number | null>(null)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
+  const [textPrompt, setTextPrompt] = useState<string>('')
+  const [numSteps, setNumSteps] = useState<number>(20)
+  const [generatedFromText, setGeneratedFromText] = useState<string | null>(null)
+  const [isGeneratingFromText, setIsGeneratingFromText] = useState(false)
   const [attributeValues, setAttributeValues] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {}
     Object.values(attributes)
@@ -88,6 +92,7 @@ function FaceGeneratorContent() {
       reader.onload = (e) => {
         setUploadedImage(e.target?.result as string)
         setSelectedFace(null)
+        setGeneratedFromText(null)
       }
       reader.readAsDataURL(file)
     }
@@ -96,6 +101,43 @@ function FaceGeneratorContent() {
   const handleFaceSelect = (faceId: number) => {
     setSelectedFace(faceId)
     setUploadedImage(null)
+    setGeneratedFromText(null)
+  }
+
+  const handleGenerateFromText = async () => {
+    if (!textPrompt.trim()) return
+
+    setIsGeneratingFromText(true)
+    setError(null)
+
+    try {
+      const formData = new URLSearchParams()
+      formData.append('prompt', textPrompt)
+      formData.append('num_step', numSteps.toString())
+
+      const response = await fetch('https://192.168.28.79/face_generator_api/face_gen_prompt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error(t('errors.textPromptFailed'))
+      }
+
+      const blob = await response.blob()
+      const imageUrl = URL.createObjectURL(blob)
+      setGeneratedFromText(imageUrl)
+      setSelectedFace(null)
+      setUploadedImage(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('errors.textPromptFailed'))
+      console.error('Error generating image from text:', err)
+    } finally {
+      setIsGeneratingFromText(false)
+    }
   }
 
   const handleAttributeChange = (attribute: string, value: number[]) => {
@@ -123,7 +165,7 @@ function FaceGeneratorContent() {
   }
 
   const generateFace = async () => {
-    if (!selectedFace && !uploadedImage) return
+    if (!selectedFace && !uploadedImage && !generatedFromText) return
 
     setIsGenerating(true)
     setError(null)
@@ -149,6 +191,16 @@ function FaceGeneratorContent() {
           method: 'POST',
           body: formData,
         })
+      } else if (generatedFromText) {
+        // Use generated from text image
+        const base64Response = await fetch(generatedFromText)
+        const blob = await base64Response.blob()
+        formData.append('binary_file', blob, 'generated_from_text.png')
+        
+        response = await fetch('https://aiclub.uit.edu.vn/face_generator_api/face_gen_upload', {
+          method: 'POST',
+          body: formData,
+        })
       } else if (selectedFace) {
         // Use default face endpoint
         formData.append('face_form', selectedFace.toString())
@@ -157,11 +209,11 @@ function FaceGeneratorContent() {
           body: formData,
         })
       } else {
-        throw new Error('Please select a face or upload an image')
+        throw new Error(t('errors.selectOrUpload'))
       }
 
       if (!response.ok) {
-        throw new Error('Failed to generate face')
+        throw new Error(t('errors.generateFailed'))
       }
 
       const resultBlob = await response.blob()
@@ -209,11 +261,93 @@ function FaceGeneratorContent() {
                 <CardTitle>{t('chooseFace')}</CardTitle>
               </CardHeader>
               <CardContent>
-                <Tabs defaultValue="upload" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
+                <Tabs defaultValue="textPrompt" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="textPrompt">{t('textPrompt')}</TabsTrigger>
                     <TabsTrigger value="upload">{t('uploadImage')}</TabsTrigger>
                     <TabsTrigger value="default">{t('defaultFaces')}</TabsTrigger>
                   </TabsList>
+
+                  <TabsContent value="textPrompt" className="space-y-4">
+                    <div className="space-y-4">
+                      <textarea
+                        value={textPrompt}
+                        onChange={(e) => setTextPrompt(e.target.value)}
+                        placeholder={t('promptPlaceholder')}
+                        className="w-full min-h-[100px] p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      />
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <Label className="text-sm font-medium">
+                            {t('numSteps')}
+                          </Label>
+                          <span className="text-sm text-gray-500">{numSteps}</span>
+                        </div>
+                        <Slider
+                          min={10}
+                          max={50}
+                          step={1}
+                          value={[numSteps]}
+                          onValueChange={(value) => setNumSteps(value[0])}
+                          className="w-full"
+                        />
+                        <p className="text-xs text-gray-500">{t('numStepsHint')}</p>
+                      </div>
+
+                      <Button
+                        onClick={handleGenerateFromText}
+                        disabled={!textPrompt.trim() || isGeneratingFromText}
+                        className="w-full"
+                      >
+                        {isGeneratingFromText ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            {t('generatingFromText')}
+                          </>
+                        ) : (
+                          t('generateFromText')
+                        )}
+                      </Button>
+                    </div>
+
+                    {generatedFromText && (
+                      <div className="mt-4 space-y-2">
+                        <div className="relative flex justify-center">
+                          <div className="w-48 h-48 rounded-lg overflow-hidden">
+                            <img
+                              src={generatedFromText}
+                              alt="Generated from text"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2 justify-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleGenerateFromText}
+                            disabled={isGeneratingFromText}
+                          >
+                            <Loader2 className={`h-4 w-4 mr-2 ${isGeneratingFromText ? 'animate-spin' : ''}`} />
+                            {t('regenerate')}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setGeneratedFromText(null)
+                              setTextPrompt('')
+                              setNumSteps(20)
+                            }}
+                          >
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            {t('resetAll')}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
 
                   <TabsContent value="upload" className="space-y-4">
                     {uploadedImage ? (
@@ -250,19 +384,19 @@ function FaceGeneratorContent() {
                         </div>
                       </div>
                     ) : (
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleFileUpload}
-                          className="hidden"
-                          id="file-upload"
-                        />
-                        <label htmlFor="file-upload" className="cursor-pointer">
-                          <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        id="file-upload"
+                      />
+                      <label htmlFor="file-upload" className="cursor-pointer">
+                        <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                           <p className="text-lg font-medium text-gray-900">{t('uploadPrompt')}</p>
                           <p className="text-sm text-gray-500">{t('uploadHint')}</p>
-                        </label>
+                      </label>
                       </div>
                     )}
                   </TabsContent>
@@ -280,11 +414,11 @@ function FaceGeneratorContent() {
                           onClick={() => handleFaceSelect(face.id)}
                         >
                           <div className="aspect-square w-full overflow-hidden rounded">
-                            <img
-                              src={face.src || "/placeholder.svg"}
-                              alt={face.name}
+                          <img
+                            src={face.src || "/placeholder.svg"}
+                            alt={face.name}
                               className="w-full h-full object-cover"
-                            />
+                          />
                           </div>
                           <p className="text-sm text-center mt-2">{face.name}</p>
                         </div>
@@ -372,7 +506,7 @@ function FaceGeneratorContent() {
 
                 <Button
                   onClick={generateFace}
-                  disabled={(!selectedFace && !uploadedImage) || isGenerating}
+                  disabled={(!selectedFace && !uploadedImage && !generatedFromText) || isGenerating}
                   className="w-full"
                   size="lg"
                 >

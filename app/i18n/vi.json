@@ -1,9 +1,16 @@
 {
-  "title": "Face Generator",
+  "title": "Tạo Khuôn Mặt",
   "subtitle": "Tải lên một khuôn mặt hoặc chọn một khuôn mặt mặc định, sau đó tùy chỉnh các thuộc tính để tạo ra khuôn mặt mới",
   "chooseFace": "Chọn Khuôn Mặt Của Bạn",
+  "textPrompt": "Mô Tả Văn Bản",
   "uploadImage": "Tải Lên Ảnh",
   "defaultFaces": "Khuôn Mặt Mặc Định",
+  "promptPlaceholder": "Mô tả khuôn mặt bạn muốn tạo (ví dụ: một người phụ nữ trẻ với mái tóc nâu và đôi mắt xanh)",
+  "generateFromText": "Tạo Từ Văn Bản",
+  "generatingFromText": "Đang tạo ảnh...",
+  "regenerate": "Tạo Lại",
+  "numSteps": "Số Bước",
+  "numStepsHint": "Giá trị cao hơn = chất lượng tốt hơn, nhưng tạo chậm hơn",
   "uploadPrompt": "Tải lên ảnh của bạn",
   "uploadHint": "PNG, JPG, tối đa 10MB",
   "customizeAttributes": "Tùy Chỉnh Thuộc Tính",
@@ -66,6 +73,7 @@
   "placeholderText": "Khuôn mặt đã tạo sẽ hiển thị ở đây",
   "errors": {
     "selectOrUpload": "Vui lòng chọn một khuôn mặt hoặc tải lên một ảnh",
-    "generateFailed": "Lỗi khi tạo khuôn mặt"
+    "generateFailed": "Lỗi khi tạo khuôn mặt",
+    "textPromptFailed": "Lỗi khi tạo ảnh từ văn bản"
   }
 } 

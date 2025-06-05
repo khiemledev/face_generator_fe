@@ -2,8 +2,15 @@
   "title": "Face Generator",
   "subtitle": "Upload a face or choose a default, then customize attributes to generate new faces",
   "chooseFace": "Choose Your Base Face",
+  "textPrompt": "Text Prompt",
   "uploadImage": "Upload Image",
   "defaultFaces": "Default Faces",
+  "promptPlaceholder": "Describe the face you want to generate (e.g., a young woman with brown hair and blue eyes)",
+  "generateFromText": "Generate from Text",
+  "generatingFromText": "Generating image...",
+  "regenerate": "Regenerate",
+  "numSteps": "Number of Steps",
+  "numStepsHint": "Higher values = better quality, but slower generation",
   "uploadPrompt": "Upload your image",
   "uploadHint": "PNG, JPG up to 10MB",
   "customizeAttributes": "Customize Attributes",
@@ -66,6 +73,7 @@
   "placeholderText": "Generated face will appear here",
   "errors": {
     "selectOrUpload": "Please select a face or upload an image",
-    "generateFailed": "Failed to generate face"
+    "generateFailed": "Failed to generate face",
+    "textPromptFailed": "Failed to generate image from text"
   }
 } 
