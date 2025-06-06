@@ -1,8 +1,7 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import React from "react"
+import { useState, useEffect } from "react"
 import { Upload, Download, RotateCcw, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,6 +12,8 @@ import { LanguageProvider } from "./contexts/LanguageContext"
 import { LanguageSelector } from "./components/LanguageSelector"
 import { useLanguage } from "./contexts/LanguageContext"
 import { getTranslation } from "./utils/translations"
+import { faceGeneratorAPI } from "./utils/api"
+import { AxiosError } from "axios"
 
 const defaultFaces = [
   { id: 1, name: "Face 1", src: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/images/face1.png` },
@@ -72,6 +73,8 @@ function FaceGeneratorContent() {
   const [numSteps, setNumSteps] = useState<number>(20)
   const [generatedFromText, setGeneratedFromText] = useState<string | null>(null)
   const [isGeneratingFromText, setIsGeneratingFromText] = useState(false)
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
+  const [taskStatus, setTaskStatus] = useState<string>('')
   const [attributeValues, setAttributeValues] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {}
     Object.values(attributes)
@@ -84,6 +87,129 @@ function FaceGeneratorContent() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedImage, setGeneratedImage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [faceTaskId, setFaceTaskId] = useState<string | null>(null)
+  const [faceTaskStatus, setFaceTaskStatus] = useState<string>('')
+
+  // Cleanup polling when component unmounts or task changes
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null)
+  const [facePollingInterval, setFacePollingInterval] = useState<NodeJS.Timeout | null>(null)
+
+  const stopPolling = () => {
+    if (pollingInterval) {
+      clearInterval(pollingInterval)
+      setPollingInterval(null)
+    }
+  }
+
+  const stopFacePolling = () => {
+    if (facePollingInterval) {
+      clearInterval(facePollingInterval)
+      setFacePollingInterval(null)
+    }
+  }
+
+  const checkTaskStatus = async (taskId: string): Promise<boolean> => {
+    try {
+      const response = await faceGeneratorAPI.checkPromptStatus(taskId)
+      
+      const contentType = response.headers['content-type']
+      
+      if (contentType && contentType.includes('application/json')) {
+        // Task not complete or error - parse the blob as JSON
+        const text = await (response.data as Blob).text()
+        const statusData = JSON.parse(text)
+        console.log('Task status:', statusData)
+        
+        // Update status message for user feedback
+        if (statusData.status === 'PENDING') {
+          setTaskStatus(t('status.processing'))
+        } else if (statusData.status === 'ERROR') {
+          setTaskStatus('')
+          setError(statusData.message || t('errors.textPromptFailed'))
+          return true // Stop polling on error
+        } else {
+          setTaskStatus(statusData.message || t('status.processing'))
+        }
+        
+        return false // Continue polling
+      } else {
+        // Binary response - task completed successfully
+        const blob = response.data as Blob
+        const imageUrl = URL.createObjectURL(blob)
+        setGeneratedFromText(imageUrl)
+        setSelectedFace(null)
+        setUploadedImage(null)
+        setTaskStatus('')
+        return true // Stop polling
+      }
+    } catch (err) {
+      console.error('Error checking task status:', err)
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.message || err.message 
+        : t('errors.textPromptFailed')
+      setError(errorMessage)
+      setTaskStatus('')
+      return true // Stop polling on error
+    }
+  }
+
+  const handleGenerateFromText = async () => {
+    if (!textPrompt.trim()) return
+
+    // Stop any existing polling
+    stopPolling()
+
+    setIsGeneratingFromText(true)
+    setError(null)
+    setCurrentTaskId(null)
+    setTaskStatus('')
+
+    try {
+      // Submit the generation task
+      const response = await faceGeneratorAPI.generateFromPrompt(textPrompt, numSteps)
+
+      const result = response.data
+      const taskId = result.task_id
+
+      if (!taskId) {
+        throw new Error('No task ID received')
+      }
+
+      setCurrentTaskId(taskId)
+      setTaskStatus(t('status.submittingToQueue'))
+
+      // Start polling for status
+      const interval = setInterval(async () => {
+        const isComplete = await checkTaskStatus(taskId)
+        if (isComplete) {
+          clearInterval(interval)
+          setPollingInterval(null)
+          setIsGeneratingFromText(false)
+          setCurrentTaskId(null)
+          setTaskStatus('')
+        }
+      }, 2000) // Poll every 2 seconds
+
+      setPollingInterval(interval)
+
+    } catch (err) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.message || err.message 
+        : t('errors.textPromptFailed')
+      setError(errorMessage)
+      console.error('Error generating image from text:', err)
+      setIsGeneratingFromText(false)
+      setCurrentTaskId(null)
+      setTaskStatus('')
+    }
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopPolling()
+    }
+  }, [])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -102,42 +228,6 @@ function FaceGeneratorContent() {
     setSelectedFace(faceId)
     setUploadedImage(null)
     setGeneratedFromText(null)
-  }
-
-  const handleGenerateFromText = async () => {
-    if (!textPrompt.trim()) return
-
-    setIsGeneratingFromText(true)
-    setError(null)
-
-    try {
-      const formData = new URLSearchParams()
-      formData.append('prompt', textPrompt)
-      formData.append('num_step', numSteps.toString())
-
-      const response = await fetch('https://192.168.28.79/face_generator_api/face_gen_prompt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formData,
-      })
-
-      if (!response.ok) {
-        throw new Error(t('errors.textPromptFailed'))
-      }
-
-      const blob = await response.blob()
-      const imageUrl = URL.createObjectURL(blob)
-      setGeneratedFromText(imageUrl)
-      setSelectedFace(null)
-      setUploadedImage(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.textPromptFailed'))
-      console.error('Error generating image from text:', err)
-    } finally {
-      setIsGeneratingFromText(false)
-    }
   }
 
   const handleAttributeChange = (attribute: string, value: number[]) => {
@@ -164,11 +254,59 @@ function FaceGeneratorContent() {
     return (value / 50) - 1
   }
 
+  const checkFaceTaskStatus = async (taskId: string): Promise<boolean> => {
+    try {
+      const response = await faceGeneratorAPI.checkUploadStatus(taskId)
+      
+      const contentType = response.headers['content-type']
+      
+      if (contentType && contentType.includes('application/json')) {
+        // Task not complete or error - parse the blob as JSON
+        const text = await (response.data as Blob).text()
+        const statusData = JSON.parse(text)
+        console.log('Face task status:', statusData)
+        
+        // Update status message for user feedback
+        if (statusData.status === 'PENDING') {
+          setFaceTaskStatus(t('status.processingFaceAttributes'))
+        } else if (statusData.status === 'ERROR') {
+          setFaceTaskStatus('')
+          setError(statusData.message || t('errors.generateFailed'))
+          return true // Stop polling on error
+        } else {
+          setFaceTaskStatus(statusData.message || t('status.processingFaceAttributes'))
+        }
+        
+        return false // Continue polling
+      } else {
+        // Binary response - task completed successfully
+        const blob = response.data as Blob
+        const imageUrl = URL.createObjectURL(blob)
+        setGeneratedImage(imageUrl)
+        setFaceTaskStatus('')
+        return true // Stop polling
+      }
+    } catch (err) {
+      console.error('Error checking face task status:', err)
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.message || err.message 
+        : t('errors.generateFailed')
+      setError(errorMessage)
+      setFaceTaskStatus('')
+      return true // Stop polling on error
+    }
+  }
+
   const generateFace = async () => {
     if (!selectedFace && !uploadedImage && !generatedFromText) return
 
+    // Stop any existing face polling
+    stopFacePolling()
+
     setIsGenerating(true)
     setError(null)
+    setFaceTaskId(null)
+    setFaceTaskStatus('')
 
     try {
       // Convert attribute values to API format
@@ -177,55 +315,80 @@ function FaceGeneratorContent() {
         return acc
       }, {} as Record<string, number>)
 
-      const formData = new FormData()
-      formData.append('attrs', JSON.stringify(apiAttributes))
+      if (selectedFace) {
+        // Use default face - use the synchronous API
+        const response = await faceGeneratorAPI.generateWithDefaultFace(selectedFace, apiAttributes)
+        
+        const blob = response.data
+        const imageUrl = URL.createObjectURL(blob)
+        setGeneratedImage(imageUrl)
+        setIsGenerating(false)
+        return
+      }
 
-      let response: Response
+      // For uploaded images and generated from text, use the queue-based API
+      let imageBlob: Blob
+      let filename: string
+
       if (uploadedImage) {
         // Convert base64 to blob
         const base64Response = await fetch(uploadedImage)
-        const blob = await base64Response.blob()
-        formData.append('binary_file', blob, 'uploaded_image.png')
-        
-        response = await fetch('https://aiclub.uit.edu.vn/face_generator_api/face_gen_upload', {
-          method: 'POST',
-          body: formData,
-        })
+        imageBlob = await base64Response.blob()
+        filename = 'uploaded_image.png'
       } else if (generatedFromText) {
         // Use generated from text image
         const base64Response = await fetch(generatedFromText)
-        const blob = await base64Response.blob()
-        formData.append('binary_file', blob, 'generated_from_text.png')
-        
-        response = await fetch('https://aiclub.uit.edu.vn/face_generator_api/face_gen_upload', {
-          method: 'POST',
-          body: formData,
-        })
-      } else if (selectedFace) {
-        // Use default face endpoint
-        formData.append('face_form', selectedFace.toString())
-        response = await fetch('https://aiclub.uit.edu.vn/face_generator_api/face_gen', {
-          method: 'POST',
-          body: formData,
-        })
+        imageBlob = await base64Response.blob()
+        filename = 'generated_from_text.png'
       } else {
         throw new Error(t('errors.selectOrUpload'))
       }
 
-      if (!response.ok) {
-        throw new Error(t('errors.generateFailed'))
+      const response = await faceGeneratorAPI.generateWithUploadedImage(imageBlob, apiAttributes, filename)
+
+      const result = response.data
+      const taskId = result.task_id
+
+      if (!taskId) {
+        throw new Error('No task ID received for face generation')
       }
 
-      const resultBlob = await response.blob()
-      const imageUrl = URL.createObjectURL(resultBlob)
-      setGeneratedImage(imageUrl)
+      setFaceTaskId(taskId)
+      setFaceTaskStatus(t('status.submittingFaceGeneration'))
+
+      // Start polling for status
+      const interval = setInterval(async () => {
+        const isComplete = await checkFaceTaskStatus(taskId)
+        if (isComplete) {
+          clearInterval(interval)
+          setFacePollingInterval(null)
+          setIsGenerating(false)
+          setFaceTaskId(null)
+          setFaceTaskStatus('')
+        }
+      }, 2000) // Poll every 2 seconds
+
+      setFacePollingInterval(interval)
+
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.message || err.message 
+        : 'An error occurred'
+      setError(errorMessage)
       console.error('Error generating face:', err)
-    } finally {
       setIsGenerating(false)
+      setFaceTaskId(null)
+      setFaceTaskStatus('')
     }
   }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopPolling()
+      stopFacePolling()
+    }
+  }, [])
 
   const resetAttributes = () => {
     const reset: Record<string, number> = {}
@@ -303,7 +466,7 @@ function FaceGeneratorContent() {
                         {isGeneratingFromText ? (
                           <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            {t('generatingFromText')}
+                            {taskStatus || t('generatingFromText')}
                           </>
                         ) : (
                           t('generateFromText')
@@ -513,7 +676,7 @@ function FaceGeneratorContent() {
                   {isGenerating ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {t('generating')}
+                      {faceTaskStatus || t('generating')}
                     </>
                   ) : (
                     t('generateFace')
@@ -566,3 +729,4 @@ export default function FaceGenerator() {
     </LanguageProvider>
   )
 }
+

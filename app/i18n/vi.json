@@ -15,6 +15,12 @@
   "uploadHint": "PNG, JPG, tối đa 10MB",
   "customizeAttributes": "Tùy Chỉnh Thuộc Tính",
   "resetAll": "Đặt Lại Tất Cả",
+  "status": {
+    "submittingToQueue": "Đang gửi vào hàng đợi...",
+    "processing": "Đang xử lý...",
+    "submittingFaceGeneration": "Đang gửi tạo khuôn mặt vào hàng đợi...",
+    "processingFaceAttributes": "Đang xử lý thuộc tính khuôn mặt..."
+  },
   "categories": {
     "hair": "Tóc",
     "facial": "Khuôn Mặt",

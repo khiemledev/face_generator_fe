@@ -37,6 +37,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_BASE_PATH=${NEXTJS_BASE_PATH:-}
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-}
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -52,6 +53,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
+
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-}
 
 EXPOSE 3000
 

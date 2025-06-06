@@ -15,6 +15,12 @@
   "uploadHint": "PNG, JPG up to 10MB",
   "customizeAttributes": "Customize Attributes",
   "resetAll": "Reset All",
+  "status": {
+    "submittingToQueue": "Submitting to queue...",
+    "processing": "Processing...",
+    "submittingFaceGeneration": "Submitting face generation to queue...",
+    "processingFaceAttributes": "Processing face attributes..."
+  },
   "categories": {
     "hair": "Hair",
     "facial": "Facial",
