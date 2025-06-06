@@ -29,7 +29,7 @@ services:
       args:
         - NEXTJS_BASE_PATH=${NEXTJS_BASE_PATH:-}
     ports:
-      - "3000:3000"
+      - "8095:3000"
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
